@@ -959,6 +959,34 @@ class TrainingScheduleController extends Controller
 
     }
 
+    function expirationReminder() {
+        
+        $year = date('Y');
+        $month = date('m');
+        $nextMonth = date('m') +1;
+        
+
+        $thisMonthExpiry =  DB::table('training_schedules')
+        ->leftJoin('trainees', 'training_schedules.trainee_id', '=', 'trainees.id')
+        ->where('training_status', '=', 1)
+        ->where('training_schedules.expiry_date', '>=', $year . "-" . $month . "-" . "01")
+        ->where('training_schedules.expiry_date', '<=', $year . "-" . $month . "-" . "31")
+        ->OrderBy('training_schedules.expiry_date', 'ASC')
+        ->get(['training_schedules.id','trainees.first_name', 'trainees.surname', 
+        'training_schedules.training_title']);
+
+        $nextMonthExpiry =  DB::table('training_schedules')
+        ->leftJoin('trainees', 'training_schedules.trainee_id', '=', 'trainees.id')
+        ->where('training_status', '=', 1)
+        ->where('training_schedules.expiry_date', '>=', $year . "-" . $nextMonth . "-" . "01")
+        ->where('training_schedules.expiry_date', '<=', $year . "-" . $nextMonth . "-" . "31")
+        ->OrderBy('training_schedules.expiry_date', 'ASC')
+        ->get(['training_schedules.id','trainees.first_name', 'trainees.surname', 
+        'training_schedules.training_title']);
+
+         return array('this_month_expiry'=> $thisMonthExpiry, 'next_month_expiry'=>$nextMonthExpiry);
+    }
+
     public function deleteParticipant($id, $schedule_id)
     {
         TrainingSchedule::find($id)->delete();

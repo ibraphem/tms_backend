@@ -94,6 +94,8 @@ Route::get('external/report/cost/{value}/{year}', 'api\TrainingScheduleControlle
 
 Route::get('absent/trainees/{year}/{month}', 'api\TrainingScheduleController@absentTrainees');
 
+Route::get('expiry', 'api\TrainingScheduleController@expirationReminder');
+
 Route::get('test', 'api\TrainingScheduleController@test');
 });
 //Route::get('addpartticipant/{schedule_id}', 'api\TraineeController@loopParticipant');
