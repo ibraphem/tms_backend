@@ -19,7 +19,7 @@ class TraineeController extends Controller
      */
     public function index()
     {
-        $result = Trainee::where('status', '=', 1)->orderBy('id','DESC')->get();
+        $result = Trainee::where('status', '=', 1)->orderBy('first_name','ASC')->get();
         return $result;
     }
 
@@ -81,9 +81,9 @@ class TraineeController extends Controller
     public function store(Request $request)
     {
         $trainee = new Trainee();
-        $trainee->staff_id = $request->staff_id;
-        $trainee->first_name = $request->first_name;
-        $trainee->surname = $request->surname;
+        $trainee->staff_id =strtoupper($request->staff_id);
+        $trainee->first_name = strtoupper($request->first_name);
+        $trainee->surname = strtoupper($request->surname);
         $trainee->save();
         $result = Trainee::where('status', '=', 1)->orderBy('id','DESC')->get();
         return $result;
@@ -101,10 +101,10 @@ class TraineeController extends Controller
         $result = DB::table('training_schedules')
         ->where('training_status', '=', 1)
         ->where('trainee_id', '=', $id)
-        ->leftJoin('trainees', 'training_schedules.trainee_id', '=', 'trainees.id')
-        ->orderBy('training_schedules.id', 'DESC')
-        ->get(['training_schedules.training_start_date', 'training_schedules.training_title', 'training_schedules.training_end_date',
-        'trainees.first_name', 'trainees.surname','training_schedules.cost', 'training_schedules.expiry_date']);
+      //  ->leftJoin('trainees', 'training_schedules.trainee_id', '=', 'trainees.id')
+        ->orderBy('training_schedules.training_end_date', 'DESC')->get();
+      //  ->get(['training_schedules.id','training_schedules.training_start_date', 'training_schedules.training_title', 'training_schedules.training_end_date',
+      //  'trainees.first_name', 'trainees.surname','training_schedules.cost', 'training_schedules.expiry_date']);
         return $result;
     }
 
@@ -126,9 +126,9 @@ class TraineeController extends Controller
     public function update(Request $request, $id)
     {
         $trainee = Trainee::find($id);
-        $trainee->staff_id = $request->staff_id;
-        $trainee->first_name = $request->first_name;
-        $trainee->surname = $request->surname;
+        $trainee->staff_id = strtoupper($request->staff_id);
+        $trainee->first_name = strtoupper($request->first_name);
+        $trainee->surname =strtoupper($request->surname);
         $trainee->save();
         $result = Trainee::where('status', '=', 1)->orderBy('id','DESC')->get();
         return $result;
@@ -140,6 +140,15 @@ class TraineeController extends Controller
         $trainee->status = 0;
         $trainee->save();
         $result = Trainee::where('status', '=', 1)->orderBy('id','DESC')->get();
+        return $result;
+    }
+
+    public function active($id)
+    {
+        $trainee = Trainee::find($id);
+        $trainee->status = 1;
+        $trainee->save();
+        $result = Trainee::where('status', '=', 0)->orderBy('id','DESC')->get();
         return $result;
     }
 

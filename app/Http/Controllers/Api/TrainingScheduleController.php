@@ -19,25 +19,46 @@ class TrainingScheduleController extends Controller
      */
     public function index()
     {
+
         $result = DB::table('training_schedules')->Distinct()
-       
         ->leftJoin('instructors', 'training_schedules.instructor_id', '=', 'instructors.id')
+        ->where('training_schedules.schedule_id', '!=', NULL)
         ->orderBy('training_schedules.created_at', 'DESC')
         ->get(['schedule_id', 'training_title', 'full_name', 'venue', 'training_start_date', 'instructor_id', 'training_end_date',
         'cost', 'training_type', 'validity']);
 
-        return $result;
+         return $result;
     }
 
+    public function thisMonthTrainings()
+    {
+
+        $year = date('Y');
+        $month = date('m');
+
+        $result = DB::table('training_schedules')->Distinct()
+        ->leftJoin('instructors', 'training_schedules.instructor_id', '=', 'instructors.id')
+        ->where('training_schedules.schedule_id', '!=', NULL)
+        ->where('training_schedules.training_start_date', '>=', $year . "-" . $month . "-" . "01")
+        ->where('training_schedules.training_start_date', '<=', $year . "-" . $month . "-" . "31")
+        ->orderBy('training_schedules.created_at', 'DESC')
+        ->get(['schedule_id', 'training_title', 'full_name', 'venue', 'training_start_date', 'instructor_id', 'training_end_date',
+        'cost', 'training_type', 'validity']);
+
+         return $result;
+    }
+     
+
     public function fetchCompletedTrainings() {
-        $result = DB::table('training_schedules')
+       $result = DB::table('training_schedules')
         ->where('training_status', '=', 1)
         ->leftJoin('trainees', 'training_schedules.trainee_id', '=', 'trainees.id')
         ->orderBy('training_schedules.created_at', 'DESC')
         ->get(['training_schedules.id', 'trainees.first_name', 'trainees.surname', 'training_schedules.training_title', 
         'training_schedules.training_start_date', 'training_schedules.training_end_date', 
         'training_schedules.cost', 'training_schedules.expiry_date', 'training_schedules.sent_date']);
-        return $result;
+        return $result; 
+            
     }
 
     public function fetchParticipants($schedule_id) {
@@ -52,6 +73,7 @@ class TrainingScheduleController extends Controller
 
         return $result;
 
+        
     }
 
     /**
@@ -64,30 +86,24 @@ class TrainingScheduleController extends Controller
         //
     }
 
-    public function test($year=2020, $month=9) {
+    public function test($id = 138) {
 
-        $results = DB::select( DB::raw("SELECT training_schedules.id, courses.course, training_schedules.training_start_date, instructors.full_name,
-        COUNT(CASE WHEN training_schedules.training_status = 1 then training_schedules.schedule_id END) as present,
-        COUNT(CASE WHEN training_schedules.training_status = 0 then training_schedules.schedule_id END) as absent,
-        COUNT(CASE WHEN training_schedules.training_status = 0 OR training_schedules.training_status = 1 then training_schedules.schedule_id END) as sch_students
-  
-        FROM training_schedules
-        JOIN courses
-        ON training_schedules.training_id = courses.id
-        JOIN instructors
-        ON training_schedules.instructor_id = instructors.id
-        WHERE training_schedules.training_start_date >= '$year-$month-01'
-        AND training_schedules.training_start_date <= '$year-$month-31'
-        AND training_schedules.training_type = 'Internal'
-        GROUP BY training_schedules.schedule_id
-        ORDER by training_schedules.training_start_date ASC") ); 
-
-    return $results; 
-
-
-  
+    $result = TrainingSchedule::where('trainee_id', '=', $id)
+    ->with('trainee')
+    ->orderBy('training_start_date', 'DESC')->get();
+    return $result; 
         
     }
+
+    public function showCert($id) {
+
+        $result = TrainingSchedule::where('trainee_id', '=', $id)
+        ->with('trainee')
+        ->orderBy('training_start_date', 'DESC')->get();
+        return $result; 
+            
+        }
+    
 
     public function absentTrainees($year, $month){
         $result = DB::table('training_schedules')
@@ -95,7 +111,7 @@ class TrainingScheduleController extends Controller
         ->where('training_status', '=', 0)
         ->where('training_schedules.training_start_date', '>=', $year . "-" . $month . "-" . "01")
         ->where('training_schedules.training_start_date', '<=', $year . "-" . $month . "-" . "31")
-        ->where('training_schedules.training_type', '=', 'Internal')
+        ->where('training_schedules.training_type', '=', 'INTERNAL')
         ->OrderBy('training_schedules.training_start_date', 'ASC')
         ->get(['training_schedules.id','trainees.first_name', 'trainees.surname', 'training_schedules.training_title']);
 
@@ -175,7 +191,7 @@ class TrainingScheduleController extends Controller
 
         $schedule_id = Str::random(15);
         $trainees = $request->input('trainees');
-        $training = $request->training;
+        $training = strtoupper($request->training);
         $validity = $request->validity;
         $training_start_date = $request->training_date;
         $training_type = $request->training_type;
@@ -252,7 +268,7 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-01-01'
             AND training_schedules.training_start_date <= '$year-01-31'
-            AND training_schedules.training_type = 'Internal'
+            AND training_schedules.training_type = 'INTERNAL'
     
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
@@ -264,52 +280,52 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-02-01'
             AND training_schedules.training_start_date <= '$year-02-31'
-            AND training_schedules.training_type = 'Internal'
+            AND training_schedules.training_type = 'INTERNAL'
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
     
             $c_result = DB::select( DB::raw("SELECT training_schedules.id, training_schedules.training_title, 
             training_schedules.training_start_date, training_schedules.training_end_date, training_schedules.cost,
             COUNT(CASE WHEN training_schedules.training_status = 1 then training_schedules.schedule_id END) as present
-    
+
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-03-01'
             AND training_schedules.training_start_date <= '$year-03-31'
-            AND training_schedules.training_type = 'Internal'
-            AND training_schedules.training_status = 1
-            ORDER by training_schedules.training_start_date ASC") );
+            AND training_schedules.training_type = 'INTERNAL'
+            GROUP BY training_schedules.schedule_id
+            ORDER by training_schedules.training_start_date ASC") ); 
             
             $a_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-01-01' AND training_start_date <= '$year-01-31' 
-            AND training_status = 1"));
+            AND training_status = 1 AND training_type = 'INTERNAL'"));
     
             $a_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-01-01' AND training_start_date <= '$year-01-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $b_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-02-01' AND training_start_date <= '$year-02-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $b_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-02-01' AND training_start_date <= '$year-02-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $c_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-03-01' AND training_start_date <= '$year-03-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $c_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-03-01' AND training_start_date <= '$year-03-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $t_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-01-01' AND training_start_date <= '$year-03-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $t_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-01-01' AND training_start_date <= '$year-03-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             return array('a_result' =>$a_result, 'b_result' => $b_result, 'c_result' => $c_result,
             'a_sum' => $a_sum, 'b_sum' => $b_sum, 'c_sum' => $c_sum, 't_sum' => $t_sum, 
@@ -326,7 +342,7 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-04-01'
             AND training_schedules.training_start_date <= '$year-04-31'
-            AND training_schedules.training_type = 'Internal'
+            AND training_schedules.training_type = 'INTERNAL'
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
     
@@ -337,7 +353,7 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-05-01'
             AND training_schedules.training_start_date <= '$year-05-31'
-            AND training_schedules.training_type = 'Internal'
+            AND training_schedules.training_type = 'INTERNAL'
           
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
@@ -349,42 +365,42 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-06-01'
             AND training_schedules.training_start_date <= '$year-06-31'
-            AND training_schedules.training_type = 'Internal'
+            AND training_schedules.training_type = 'INTERNAL'
         
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") );
             
             $a_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-04-01' AND training_start_date <= '$year-04-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $a_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-04-01' AND training_start_date <= '$year-04-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $b_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-05-01' AND training_start_date <= '$year-05-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $b_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-05-01' AND training_start_date <= '$year-05-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $c_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-06-01' AND training_start_date <= '$year-06-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $c_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-06-01' AND training_start_date <= '$year-06-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $t_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-04-01' AND training_start_date <= '$year-06-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $t_count = DB::select( DB::raw("SELECT (id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-04-01' AND training_start_date <= '$year-06-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             return array('a_result' =>$a_result, 'b_result' => $b_result, 'c_result' => $c_result,
             'a_sum' => $a_sum, 'b_sum' => $b_sum, 'c_sum' => $c_sum, 't_sum' => $t_sum, 
@@ -399,22 +415,21 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-07-01'
             AND training_schedules.training_start_date <= '$year-07-31'
-            AND training_schedules.training_type = 'Internal'
+            AND training_schedules.training_type = 'INTERNAL'
         
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
     
             $b_result = DB::select( DB::raw("SELECT training_schedules.id, training_schedules.training_title, 
             training_schedules.training_start_date, training_schedules.training_end_date, training_schedules.cost,
-            COUNT(CASE WHEN training_schedules.training_status = 1 then training_schedules.schedule_id END) as present
-    
-            FROM training_schedules
-            WHERE training_schedules.training_start_date >= '$year-08-01'
-            AND training_schedules.training_start_date <= '$year-08-31'
-            AND training_schedules.training_type = 'Internal'
-      
-            GROUP BY training_schedules.schedule_id
-            ORDER by training_schedules.training_start_date ASC") ); 
+        COUNT(CASE WHEN training_schedules.training_status = 1 then training_schedules.schedule_id END) as present
+
+        FROM training_schedules
+        WHERE training_schedules.training_start_date >= '$year-08-01'
+        AND training_schedules.training_start_date <= '$year-08-31'
+        AND training_schedules.training_type = 'INTERNAL'
+        GROUP BY training_schedules.schedule_id
+        ORDER by training_schedules.training_start_date ASC") ); 
     
             $c_result = DB::select( DB::raw("SELECT training_schedules.id, training_schedules.training_title, 
             training_schedules.training_start_date, training_schedules.training_end_date, training_schedules.cost,
@@ -423,42 +438,42 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-09-01'
             AND training_schedules.training_start_date <= '$year-09-31'
-            AND training_schedules.training_type = 'Internal'
+            AND training_schedules.training_type = 'INTERNAL'
         
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") );
             
             $a_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-07-01' AND training_start_date <= '$year-07-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $a_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-07-01' AND training_start_date <= '$year-07-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $b_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-08-01' AND training_start_date <= '$year-08-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $b_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-08-01' AND training_start_date <= '$year-08-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $c_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-09-01' AND training_start_date <= '$year-09-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $c_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-09-01' AND training_start_date <= '$year-09-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $t_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-07-01' AND training_start_date <= '$year-09-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $t_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-07-01' AND training_start_date <= '$year-09-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             return array('a_result' =>$a_result, 'b_result' => $b_result, 'c_result' => $c_result,
             'a_sum' => $a_sum, 'b_sum' => $b_sum, 'c_sum' => $c_sum, 't_sum' => $t_sum, 
@@ -474,7 +489,7 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-10-01'
             AND training_schedules.training_start_date <= '$year-10-31'
-            AND training_schedules.training_type = 'Internal'
+            AND training_schedules.training_type = 'INTERNAL'
     
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
@@ -486,7 +501,7 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-11-01'
             AND training_schedules.training_start_date <= '$year-11-31'
-            AND training_schedules.training_type = 'Internal'
+            AND training_schedules.training_type = 'INTERNAL'
           
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
@@ -498,42 +513,42 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-12-01'
             AND training_schedules.training_start_date <= '$year-12-31'
-            AND training_schedules.training_type = 'Internal'
+            AND training_schedules.training_type = 'INTERNAL'
         
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") );
             
             $a_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-10-01' AND training_start_date <= '$year-10-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $a_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-10-01' AND training_start_date <= '$year-10-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $b_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-11-01' AND training_start_date <= '$year-11-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $b_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-11-01' AND training_start_date <= '$year-11-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $c_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-12-01' AND training_start_date <= '$year-12-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $c_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-12-01' AND training_start_date <= '$year-12-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $t_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-10-01' AND training_start_date <= '$year-12-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             $t_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-10-01' AND training_start_date <= '$year-12-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'Internal'"));
+            AND training_status = 1 AND training_schedules.training_type = 'INTERNAL'"));
     
             return array('a_result' =>$a_result, 'b_result' => $b_result, 'c_result' => $c_result,
             'a_sum' => $a_sum, 'b_sum' => $b_sum, 'c_sum' => $c_sum, 't_sum' => $t_sum, 
@@ -573,7 +588,7 @@ class TrainingScheduleController extends Controller
         JOIN instructors ON training_schedules.instructor_id = instructors.id  
         WHERE training_schedules.training_start_date >= '$year-$month-01' 
         AND training_schedules.training_start_date <= '$year-$month-31' 
-        AND training_schedules.training_type = 'Internal' 
+        AND training_schedules.training_type = 'INTERNAL' 
         GROUP BY training_schedules.schedule_id 
         ORDER by training_schedules.training_start_date ASC") ); 
     
@@ -603,7 +618,42 @@ class TrainingScheduleController extends Controller
     }
 
 
+    public function update(Request $request, $schedule_id)
+    {
+
+        $training_start_date = $request->training_date;
+        $training_type = $request->training_type;
+        $training_venue = $request->venue;
+        $training_cost = $request->cost;
+        $validity = $request->validity;
+        $training_end_date = $request->end_date;
+        $training_title =strtoupper($request->training_title);
+
+        $update = DB::table('training_schedules')
+              ->where('schedule_id', $schedule_id)
+              ->update(['training_start_date' => $training_start_date,
+                        'training_end_date'=>$training_end_date,
+                        'training_title'=>$training_title,
+                        'venue'=>$training_venue,
+                        'validity' => $validity,
+                        'training_type'=>$training_type,
+                        'cost'=>$training_cost]);
+
+   
+        $result = DB::table('training_schedules')->Distinct()
+        ->leftJoin('instructors', 'training_schedules.instructor_id', '=', 'instructors.id')
+        ->orderBy('training_schedules.created_at', 'DESC')
+        ->get(['schedule_id', 'training_title', 'full_name', 'venue', 'training_start_date', 'instructor_id', 'training_end_date',
+        'cost', 'training_type', 'validity']);
+
+        return $result;
+
+    }
+
+
   
+
+
     public function fetchExternalTrainingCostReport($value, $year) {
         //    return($year);
             if($value == 'first'){
@@ -614,64 +664,63 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-01-01'
             AND training_schedules.training_start_date <= '$year-01-31'
-            AND training_schedules.training_type = 'External'
-    
+            AND training_schedules.training_type = 'EXTERNAL'
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
     
             $b_result = DB::select( DB::raw("SELECT training_schedules.id, training_schedules.training_title, 
             training_schedules.training_start_date, training_schedules.training_end_date, training_schedules.cost,
             COUNT(CASE WHEN training_schedules.training_status = 1 then training_schedules.schedule_id END) as present
-    
+
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-02-01'
             AND training_schedules.training_start_date <= '$year-02-31'
-            AND training_schedules.training_type = 'External'
+            AND training_schedules.training_type = 'EXTERNAL'
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
     
             $c_result = DB::select( DB::raw("SELECT training_schedules.id, training_schedules.training_title, 
             training_schedules.training_start_date, training_schedules.training_end_date, training_schedules.cost,
             COUNT(CASE WHEN training_schedules.training_status = 1 then training_schedules.schedule_id END) as present
-    
+
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-03-01'
             AND training_schedules.training_start_date <= '$year-03-31'
-            AND training_schedules.training_type = 'External'
-            AND training_schedules.training_status = 1
-            ORDER by training_schedules.training_start_date ASC") );
+            AND training_schedules.training_type = 'EXTERNAL'
+            GROUP BY training_schedules.schedule_id
+            ORDER by training_schedules.training_start_date ASC") ); 
             
             $a_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-01-01' AND training_start_date <= '$year-01-31' 
-            AND training_status = 1"));
+            AND training_status = 1 AND training_type = 'EXTERNAL'"));
     
             $a_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-01-01' AND training_start_date <= '$year-01-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $b_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-02-01' AND training_start_date <= '$year-02-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $b_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-02-01' AND training_start_date <= '$year-02-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $c_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-03-01' AND training_start_date <= '$year-03-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $c_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-03-01' AND training_start_date <= '$year-03-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $t_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-01-01' AND training_start_date <= '$year-03-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $t_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-01-01' AND training_start_date <= '$year-03-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             return array('a_result' =>$a_result, 'b_result' => $b_result, 'c_result' => $c_result,
             'a_sum' => $a_sum, 'b_sum' => $b_sum, 'c_sum' => $c_sum, 't_sum' => $t_sum, 
@@ -688,7 +737,7 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-04-01'
             AND training_schedules.training_start_date <= '$year-04-31'
-            AND training_schedules.training_type = 'External'
+            AND training_schedules.training_type = 'EXTERNAL'
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
     
@@ -699,7 +748,7 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-05-01'
             AND training_schedules.training_start_date <= '$year-05-31'
-            AND training_schedules.training_type = 'External'
+            AND training_schedules.training_type = 'EXTERNAL'
           
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
@@ -711,42 +760,42 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-06-01'
             AND training_schedules.training_start_date <= '$year-06-31'
-            AND training_schedules.training_type = 'External'
+            AND training_schedules.training_type = 'EXTERNAL'
         
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") );
             
             $a_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-04-01' AND training_start_date <= '$year-04-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $a_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-04-01' AND training_start_date <= '$year-04-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $b_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-05-01' AND training_start_date <= '$year-05-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $b_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-05-01' AND training_start_date <= '$year-05-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $c_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-06-01' AND training_start_date <= '$year-06-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $c_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-06-01' AND training_start_date <= '$year-06-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $t_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-04-01' AND training_start_date <= '$year-06-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $t_count = DB::select( DB::raw("SELECT (id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-04-01' AND training_start_date <= '$year-06-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             return array('a_result' =>$a_result, 'b_result' => $b_result, 'c_result' => $c_result,
             'a_sum' => $a_sum, 'b_sum' => $b_sum, 'c_sum' => $c_sum, 't_sum' => $t_sum, 
@@ -761,7 +810,7 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-07-01'
             AND training_schedules.training_start_date <= '$year-07-31'
-            AND training_schedules.training_type = 'External'
+            AND training_schedules.training_type = 'EXTERNAL'
         
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
@@ -773,7 +822,7 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-08-01'
             AND training_schedules.training_start_date <= '$year-08-31'
-            AND training_schedules.training_type = 'External'
+            AND training_schedules.training_type = 'EXTERNAL'
       
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
@@ -785,42 +834,42 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-09-01'
             AND training_schedules.training_start_date <= '$year-09-31'
-            AND training_schedules.training_type = 'External'
+            AND training_schedules.training_type = 'EXTERNAL'
         
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") );
             
             $a_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-07-01' AND training_start_date <= '$year-07-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $a_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-07-01' AND training_start_date <= '$year-07-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $b_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-08-01' AND training_start_date <= '$year-08-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $b_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-08-01' AND training_start_date <= '$year-08-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $c_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-09-01' AND training_start_date <= '$year-09-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $c_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-09-01' AND training_start_date <= '$year-09-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $t_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-07-01' AND training_start_date <= '$year-09-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $t_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-07-01' AND training_start_date <= '$year-09-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             return array('a_result' =>$a_result, 'b_result' => $b_result, 'c_result' => $c_result,
             'a_sum' => $a_sum, 'b_sum' => $b_sum, 'c_sum' => $c_sum, 't_sum' => $t_sum, 
@@ -836,7 +885,7 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-10-01'
             AND training_schedules.training_start_date <= '$year-10-31'
-            AND training_schedules.training_type = 'External'
+            AND training_schedules.training_type = 'EXTERNAL'
     
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
@@ -848,7 +897,7 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-11-01'
             AND training_schedules.training_start_date <= '$year-11-31'
-            AND training_schedules.training_type = 'External'
+            AND training_schedules.training_type = 'EXTERNAL'
           
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") ); 
@@ -860,42 +909,42 @@ class TrainingScheduleController extends Controller
             FROM training_schedules
             WHERE training_schedules.training_start_date >= '$year-12-01'
             AND training_schedules.training_start_date <= '$year-12-31'
-            AND training_schedules.training_type = 'External'
+            AND training_schedules.training_type = 'EXTERNAL'
         
             GROUP BY training_schedules.schedule_id
             ORDER by training_schedules.training_start_date ASC") );
             
             $a_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-10-01' AND training_start_date <= '$year-10-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $a_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-10-01' AND training_start_date <= '$year-10-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $b_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-11-01' AND training_start_date <= '$year-11-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $b_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-11-01' AND training_start_date <= '$year-11-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $c_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-12-01' AND training_start_date <= '$year-12-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $c_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-12-01' AND training_start_date <= '$year-12-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $t_sum = DB::select( DB::raw("SELECT SUM(cost) AS cost FROM training_schedules WHERE 
             training_start_date >= '$year-10-01' AND training_start_date <= '$year-12-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             $t_count = DB::select( DB::raw("SELECT COUNT(id) AS attendee FROM training_schedules WHERE 
             training_start_date >= '$year-10-01' AND training_start_date <= '$year-12-31' 
-            AND training_status = 1 AND training_schedules.training_type = 'External'"));
+            AND training_status = 1 AND training_schedules.training_type = 'EXTERNAL'"));
     
             return array('a_result' =>$a_result, 'b_result' => $b_result, 'c_result' => $c_result,
             'a_sum' => $a_sum, 'b_sum' => $b_sum, 'c_sum' => $c_sum, 't_sum' => $t_sum, 
@@ -919,45 +968,7 @@ class TrainingScheduleController extends Controller
     
       
         }
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\TrainingSchedule  $trainingSchedule
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $schedule_id)
-    {
 
-        $training_start_date = $request->training_date;
-        $training_type = $request->training_type;
-        $training_venue = $request->venue;
-        $training_cost = $request->cost;
-        $validity = $request->validity;
-
-        $training_end_date = $request->end_date;
-        $training_title = $request->training_title;
-
-        $update = DB::table('training_schedules')
-              ->where('schedule_id', $schedule_id)
-              ->update(['training_start_date' => $training_start_date,
-                        'training_end_date'=>$training_end_date,
-                        'training_title'=>$training_title,
-                        'venue'=>$training_venue,
-                        'validity' => $validity,
-                        'training_type'=>$training_type,
-                        'cost'=>$training_cost]);
-
-   
-        $result = DB::table('training_schedules')->Distinct()
-        ->leftJoin('instructors', 'training_schedules.instructor_id', '=', 'instructors.id')
-        ->orderBy('training_schedules.created_at', 'DESC')
-        ->get(['schedule_id', 'training_title', 'full_name', 'venue', 'training_start_date', 'instructor_id', 'training_end_date',
-        'cost', 'training_type', 'validity']);
-
-        return $result;
-
-    }
 
     function expirationReminder() {
         
@@ -972,7 +983,7 @@ class TrainingScheduleController extends Controller
         ->where('training_schedules.expiry_date', '>=', $year . "-" . $month . "-" . "01")
         ->where('training_schedules.expiry_date', '<=', $year . "-" . $month . "-" . "31")
         ->OrderBy('training_schedules.expiry_date', 'ASC')
-        ->get(['training_schedules.id','trainees.first_name', 'trainees.surname', 
+        ->get(['training_schedules.id', 'training_schedules.expiry_date', 'trainees.first_name', 'trainees.surname', 
         'training_schedules.training_title']);
 
         $nextMonthExpiry =  DB::table('training_schedules')
@@ -981,10 +992,11 @@ class TrainingScheduleController extends Controller
         ->where('training_schedules.expiry_date', '>=', $year . "-" . $nextMonth . "-" . "01")
         ->where('training_schedules.expiry_date', '<=', $year . "-" . $nextMonth . "-" . "31")
         ->OrderBy('training_schedules.expiry_date', 'ASC')
-        ->get(['training_schedules.id','trainees.first_name', 'trainees.surname', 
+        ->get(['training_schedules.id', 'training_schedules.expiry_date', 'trainees.first_name', 'trainees.surname', 
         'training_schedules.training_title']);
 
-         return array('this_month_expiry'=> $thisMonthExpiry, 'next_month_expiry'=>$nextMonthExpiry);
+         return array('this_month_expiry'=> $thisMonthExpiry, 'next_month_expiry'=>$nextMonthExpiry, 
+                    'thisMonth'=>$month, 'nextMonth'=>$nextMonth);
     }
 
     public function deleteParticipant($id, $schedule_id)

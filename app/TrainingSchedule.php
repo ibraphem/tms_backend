@@ -13,9 +13,6 @@ class TrainingSchedule extends Model
         return $this->belongsTo('App\Trainee');
     }
 
-    public function course()
-    {
-        return $this->belongsTo('App\Course');
-    }
+   
     
 }

@@ -40,6 +40,8 @@ Route::put('trainee/update/{id}', 'api\TraineeController@update');
 
 Route::put('trainee/exit/{id}', 'api\TraineeController@exit');
 
+Route::put('trainee/active/{id}', 'api\TraineeController@active');
+
 Route::delete('trainee/delete/{id}', 'api\TraineeController@destroy');
 
 Route::get('courses', 'api\CourseController@index');
@@ -72,7 +74,7 @@ Route::get('addparticipant/{schedule_id}', 'api\TraineeController@loopParticipan
 
 Route::get('trainingrecords', 'api\TrainingScheduleController@fetchCompletedTrainings');
 
-Route::get('showtrainings/{id}', 'api\TraineeController@show');
+Route::get('showtrainings/{id}', 'api\TrainingScheduleController@showCert');
 
 Route::get('instructor', 'api\InstructorController@index');
 
@@ -96,8 +98,16 @@ Route::get('absent/trainees/{year}/{month}', 'api\TrainingScheduleController@abs
 
 Route::get('expiry', 'api\TrainingScheduleController@expirationReminder');
 
-Route::get('test', 'api\TrainingScheduleController@test');
-});
-//Route::get('addpartticipant/{schedule_id}', 'api\TraineeController@loopParticipant');
+Route::get('thismonthtraining', 'api\TrainingScheduleController@thisMonthTrainings');
 
-Route::get('user/test', 'UserController@test');
+Route::get('test/{id}', 'api\TrainingScheduleController@test');
+
+Route::get('trainingrequest', 'api\TrainingRequestController@index');
+
+Route::post('request/store', 'api\TrainingRequestController@store');
+
+Route::put('request/update/{id}', 'api\TrainingRequestController@update');
+});
+// Route::get('addpartticipant/{schedule_id}', 'api\TraineeController@loopParticipant');
+
+// Route::get('user/test', 'UserController@test');
